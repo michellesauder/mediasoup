@@ -13,7 +13,7 @@ import path from 'path'
 const __dirname = path.resolve()
 
 import { Server } from 'socket.io'
-import mediasoup from 'mediasoup'
+import mediasoup, { getSupportedRtpCapabilities } from 'mediasoup'
 
 app.get('/', (req, res) => {
   res.send('Hello from mediasoup app!')
@@ -95,7 +95,8 @@ const mediaCodecs = [
 peers.on('connection', async socket => {
   console.log(socket.id)
   socket.emit('connection-success', {
-    socketId: socket.id
+    socketId: socket.id,
+    existsProducer: producer ? true : false,
   })
 
   socket.on('disconnect', () => {
@@ -103,24 +104,42 @@ peers.on('connection', async socket => {
     console.log('peer disconnected')
   })
 
-  // worker.createRouter(options)
-  // options = { mediaCodecs, appData }
-  // mediaCodecs -> defined above
-  // appData -> custom application data - we are not supplying any
-  // none of the two are required
-  router = await worker.createRouter({ mediaCodecs, })
+  socket.on('createRoom', async (callback) => {
+    if(router === undefined) {
+      // worker.createRouter(options)
+      // options = { mediaCodecs, appData }
+      // mediaCodecs -> defined above
+      // appData -> custom application data - we are not supplying any
+      // none of the two are required
+      router = await worker.createRouter({ mediaCodecs, })
+      console.log(`Router ID: ${router.id}`)
+    }
+
+    getRtpCapabilities(callback)
+
+  })
+
+  const getRtpCapabilities = (callback) => {
+    const rtpCapabilities = router.rtpCapabilities
+
+    callback({ rtpCapabilities })
+
+  }
+
+
+  // router = await worker.createRouter({ mediaCodecs, })
 
   // Client emits a request for RTP Capabilities
   // This event responds to the request
-  socket.on('getRtpCapabilities', (callback) => {
+  // socket.on('getRtpCapabilities', (callback) => {
 
-    const rtpCapabilities = router.rtpCapabilities
+  //   const rtpCapabilities = router.rtpCapabilities
 
-    console.log('rtp Capabilities', rtpCapabilities)
+  //   console.log('rtp Capabilities', rtpCapabilities)
 
-    // call callback from the client and send back the rtpCapabilities
-    callback({ rtpCapabilities })
-  })
+  //   // call callback from the client and send back the rtpCapabilities
+  //   callback({ rtpCapabilities })
+  // })
 
   // Client emits a request to create server side Transport
   // We need to differentiate between the producer and consumer transports
