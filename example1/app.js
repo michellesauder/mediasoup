@@ -10,7 +10,8 @@ const app = express()
 import https from 'httpolyglot'
 import fs from 'fs'
 import path from 'path'
-const __dirname = path.resolve()
+const __dirname = path.resolve();
+
 
 import { Server } from 'socket.io'
 import mediasoup from 'mediasoup'
@@ -23,6 +24,7 @@ app.get('*', (req, res, next) => {
   res.send(`You need to specify a room name in the path e.g. 'https://127.0.0.1/sfu/room'`)
 })
 
+//conect the paths to the room
 app.use('/sfu/:room', express.static(path.join(__dirname, 'public')))
 
 // SSL cert for HTTPS access
@@ -61,6 +63,7 @@ const createWorker = async () => {
     rtcMinPort: 2000,
     rtcMaxPort: 2020,
   })
+  // console.log(worker)
   console.log(`worker pid ${worker.pid}`)
 
   worker.on('died', error => {
@@ -73,7 +76,7 @@ const createWorker = async () => {
 }
 
 // We create a Worker as soon as our application starts
-worker = createWorker()
+worker = createWorker();
 
 // This is an Array of RtpCapabilities
 // https://mediasoup.org/documentation/v3/mediasoup/rtp-parameters-and-capabilities/#RtpCodecCapability
@@ -95,9 +98,13 @@ const mediaCodecs = [
     },
   },
 ]
-
+//connection is the first event instance when there is a new connector
 connections.on('connection', async socket => {
-  console.log(socket.id)
+  //once there is a connection tell me the id
+
+  console.log('socket id:', socket.id);
+
+  // then when the connection is successfully done we want to emit(send back to the client) the socketId
   socket.emit('connection-success', {
     socketId: socket.id,
   })

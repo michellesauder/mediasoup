@@ -7,7 +7,7 @@ const roomName = window.location.pathname.split('/')[2]
 const socket = io("/mediasoup")
 
 socket.on('connection-success', ({ socketId }) => {
-  console.log(socketId)
+  console.log({socketId})
   getLocalStream()
 })
 
