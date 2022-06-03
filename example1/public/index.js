@@ -155,7 +155,6 @@ const createSendTransport = () => {
     })
 
     producerTransport.on('produce', async (parameters, callback, errback) => {
-      console.log(parameters)
 
       try {
         // tell the server to create a Producer
