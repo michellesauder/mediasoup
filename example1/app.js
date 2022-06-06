@@ -313,7 +313,8 @@ connections.on('connection', async socket => {
   }
 
   const getTransport = (socketId) => {
-    const [producerTransport] = transports.filter(transport => transport.socketId === socketId && !transport.consumer)
+    const [producerTransport] = transports.filter(transport => transport.socketId === socketId && !transport.consumer);
+    // console.log('producer transport:', producerTransport.transport)
     return producerTransport.transport
   }
 
@@ -332,6 +333,8 @@ connections.on('connection', async socket => {
       rtpParameters,
     })
 
+    // console.log('peers socket id:',peers[socket.id])
+
     // add producer to the producers array
     const { roomName } = peers[socket.id]
 
@@ -339,7 +342,7 @@ connections.on('connection', async socket => {
 
     informConsumers(roomName, socket.id, producer.id)
 
-    console.log('Producer ID: ', producer.id, producer.kind)
+    // console.log('Producer ID: ', producer.id, producer.kind)
 
     producer.on('transportclose', () => {
       console.log('transport for this producer closed ')
@@ -437,7 +440,7 @@ const createWebRtcTransport = async (router) => {
         listenIps: [
           {
             ip: '0.0.0.0', // replace with relevant IP address
-            announcedIp: '127.0.0.1',
+            announcedIp: '192.168.1.77',
           }
         ],
         enableUdp: true,

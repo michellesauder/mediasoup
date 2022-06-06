@@ -17571,6 +17571,7 @@ let videoParams = { params };
 let consumingTransports = [];
 
 const streamSuccess = (stream) => {
+
   localVideo.srcObject = stream
 
   audioParams = { track: stream.getAudioTracks()[0], ...audioParams };
@@ -17584,6 +17585,7 @@ const joinRoom = () => {
     console.log(`Router RTP Capabilities... ${data.rtpCapabilities}`)
     // we assign to local variable and will be used when
     // loading the client Device (see createDevice above)
+
     rtpCapabilities = data.rtpCapabilities
 
     // once we have rtpCapabilities from the Router, create Device
@@ -17591,24 +17593,14 @@ const joinRoom = () => {
   })
 }
 
-const getLocalStream = () => {
-  navigator.mediaDevices.getUserMedia({
+const getLocalStream = async () => {
+  const stream = await navigator.mediaDevices.getUserMedia({
     audio: true,
-    video: {
-      width: {
-        min: 640,
-        max: 1920,
-      },
-      height: {
-        min: 400,
-        max: 1080,
-      }
-    }
+    video: true
   })
-  .then(streamSuccess)
-  .catch(error => {
-    console.log(error.message)
-  })
+
+  streamSuccess(stream)
+
 }
 
 // A device is an endpoint connecting to a Router on the
@@ -17642,12 +17634,11 @@ const createSendTransport = () => {
   socket.emit('createWebRtcTransport', { consumer: false }, ({ params }) => {
     // The server sends back params needed 
     // to create Send Transport on the client side
+
     if (params.error) {
       console.log(params.error)
       return
     }
-
-    console.log(params)
 
     // creates a new WebRTC Transport to send media
     // based on the server's producer transport params
@@ -17706,7 +17697,6 @@ const connectSendTransport = async () => {
   // to send media to the Router
   // https://mediasoup.org/documentation/v3/mediasoup-client/api/#transport-produce
   // this action will trigger the 'connect' and 'produce' events above
-  
   audioProducer = await producerTransport.produce(audioParams);
   videoProducer = await producerTransport.produce(videoParams);
 
@@ -17833,7 +17823,7 @@ const connectRecvTransport = async (consumerTransport, remoteProducerId, serverC
 
     if (params.kind == 'audio') {
       //append to the audio container
-      newElem.innerHTML = '<audio id="' + remoteProducerId + '" autoplay></audio>'
+      newElem.innerHTML = '<audio id="' + remoteProducerId + '" autoplay ></audio>'
     } else {
       //append to the video container
       newElem.setAttribute('class', 'remoteVideo')
@@ -17846,7 +17836,7 @@ const connectRecvTransport = async (consumerTransport, remoteProducerId, serverC
     const { track } = consumer
 
     document.getElementById(remoteProducerId).srcObject = new MediaStream([track])
-    console.log(document.getElementById(remoteProducerId).srcObject, 'new element')
+    // console.log(document.getElementById(remoteProducerId).srcObject, 'new element')
 
 
     // the server consumer started with media paused
