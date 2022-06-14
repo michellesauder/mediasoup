@@ -2,13 +2,20 @@
 const io = require('socket.io-client')
 const mediasoupClient = require('mediasoup-client')
 
+// import io from 'socket.io-client'
+// import mediasoupClient from 'mediasoup-client'
+
 const roomName = window.location.pathname.split('/')[2]
 
-const socket = io("/mediasoup")
+const socket = io("https://0.0.0.0:4000/mediasoup1", { secure: true})
 
 socket.on('connection-success', ({ socketId }) => {
   console.log({socketId})
   getLocalStream()
+})
+
+socket.on('connect_error', (err) => {
+  console.log(`connect_error due to ${err.message}`)
 })
 
 let device
