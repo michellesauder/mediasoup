@@ -10,7 +10,7 @@ const roomName = window.location.pathname.split('/')[2]
 const socket = io("https://0.0.0.0:4000/mediasoup1", { secure: true})
 
 socket.on('connection-success', ({ socketId }) => {
-  console.log({socketId})
+  console.log('1) connection success:', {socketId})
   getLocalStream()
 })
 
@@ -65,12 +65,13 @@ const streamSuccess = (stream) => {
   audioParams = { track: stream.getAudioTracks()[0], ...audioParams };
   videoParams = { track: stream.getVideoTracks()[0], ...videoParams };
 
+  console.log('2) add local video/audio stream to tracks')
   joinRoom()
 }
 
 const joinRoom = () => {
   socket.emit('joinRoom', { roomName }, (data) => {
-    console.log(`Router RTP Capabilities... ${data.rtpCapabilities}`)
+    console.log(`3)joined room {rtp capabilities}: ${data.rtpCapabilities}`)
     // we assign to local variable and will be used when
     // loading the client Device (see createDevice above)
 
@@ -104,7 +105,7 @@ const createDevice = async () => {
       routerRtpCapabilities: rtpCapabilities
     })
 
-    console.log('Device RTP Capabilities', device.rtpCapabilities)
+    console.log('6) Device RTP Capabilities after creating a device: ', device.rtpCapabilities)
 
     // once the device loads, create transport
     createSendTransport()
@@ -123,6 +124,8 @@ const createSendTransport = () => {
     // The server sends back params needed 
     // to create Send Transport on the client side
 
+    console.log('7) After creating web rtc transport, sends back params with ICE params etc: ', params.id)
+
     if (params.error) {
       console.log(params.error)
       return
@@ -133,13 +136,17 @@ const createSendTransport = () => {
     // https://mediasoup.org/documentation/v3/mediasoup-client/api/#TransportOptions
     producerTransport = device.createSendTransport(params)
 
+    console.log('8)Create producer transport throught device:', producerTransport.id)
+
     // https://mediasoup.org/documentation/v3/communication-between-client-and-server/#producing-media
     // this event is raised when a first call to transport.produce() is made
     // see connectSendTransport() below
     producerTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
+      console.log('10) Once producer transporter has connected, emit transport-connect with dtlsParams')
       try {
         // Signal local DTLS parameters to the server side transport
         // see server's socket.on('transport-connect', ...)
+        console.log('***************** in transport connect')
         await socket.emit('transport-connect', {
           dtlsParameters,
         })
@@ -153,17 +160,21 @@ const createSendTransport = () => {
     })
 
     producerTransport.on('produce', async (parameters, callback, errback) => {
-
       try {
+
         // tell the server to create a Producer
         // with the following parameters and produce
         // and expect back a server side producer id
         // see server's socket.on('transport-produce', ...)
+
+        console.log('13) tells the server to create a producer with params and receive a producer ID')
+
         await socket.emit('transport-produce', {
           kind: parameters.kind,
           rtpParameters: parameters.rtpParameters,
           appData: parameters.appData,
         }, ({ id, producersExist }) => {
+          // console.log('in transport produce emit')
           // Tell the transport that parameters were transmitted and provide it with the
           // server side producer's id.
           callback({ id })
@@ -215,8 +226,11 @@ const connectSendTransport = async () => {
 
 const signalNewConsumerTransport = async (remoteProducerId) => {
   //check if we are already consuming the remoteProducerId
+
   if (consumingTransports.includes(remoteProducerId)) return;
   consumingTransports.push(remoteProducerId);
+
+  console.log('20)for every producer id create a consumer transport if it does not exist')
 
   await socket.emit('createWebRtcTransport', { consumer: true }, ({ params }) => {
     // The server sends back params needed 
@@ -225,11 +239,12 @@ const signalNewConsumerTransport = async (remoteProducerId) => {
       console.log(params.error)
       return
     }
-    console.log(`PARAMS... ${params}`)
+    console.log(`21) creating consumer PARAMS for consumer transports:  ${params.id}`)
 
     let consumerTransport
     try {
       consumerTransport = device.createRecvTransport(params)
+      console.log('22) create a consumer recv transport from device: ', params)
     } catch (error) {
       // exceptions: 
       // {InvalidStateError} if not loaded
@@ -239,6 +254,7 @@ const signalNewConsumerTransport = async (remoteProducerId) => {
     }
 
     consumerTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
+      console.log('23) consumer transport has connected', dtlsParameters)
       try {
         // Signal local DTLS parameters to the server side transport
         // see server's socket.on('transport-recv-connect', ...)
@@ -264,7 +280,7 @@ socket.on('new-producer', ({ producerId }) => signalNewConsumerTransport(produce
 
 const getProducers = () => {
   socket.emit('getProducers', producerIds => {
-    console.log(producerIds)
+    console.log('19) if producers already exist, get them all & for each of the producer create a consumer' , producerIds)
     // for each of the producer create a consumer
     // producerIds.forEach(id => signalNewConsumerTransport(id))
     producerIds.forEach(signalNewConsumerTransport)
@@ -285,9 +301,11 @@ const connectRecvTransport = async (consumerTransport, remoteProducerId, serverC
       return
     }
 
-    console.log(`Consumer Params ${params}`)
+    console.log(`23)Connection recv consume transport ${params}`)
     // then consume with the local consumer transport
     // which creates a consumer
+    console.log(params.id, params.producerId, params.kind, params.rtpParameters)
+
     const consumer = await consumerTransport.consume({
       id: params.id,
       producerId: params.producerId,
@@ -305,26 +323,32 @@ const connectRecvTransport = async (consumerTransport, remoteProducerId, serverC
       },
     ]
 
+    console.log( '25) add consumer to consumer consumerTransports remote producer id: ', remoteProducerId )
+
     // create a new div element for the new consumer media
     const newElem = document.createElement('div')
     newElem.setAttribute('id', `td-${remoteProducerId}`)
 
+    console.log('26) create new element :', remoteProducerId)
+
     if (params.kind == 'audio') {
       //append to the audio container
       newElem.innerHTML = '<audio id="' + remoteProducerId + '" autoplay ></audio>'
-    } else {
+      console.log('26) create new audio element :', remoteProducerId)
+
+    }
       //append to the video container
       newElem.setAttribute('class', 'remoteVideo')
       newElem.innerHTML = '<video id="' + remoteProducerId + '" autoplay class="video" ></video>'
-    }
+      console.log('27) create new video element :', newElem)
 
     videoContainer.appendChild(newElem)
 
     // destructure and retrieve the video track from the producer
     const { track } = consumer
 
+    console.log('28) set new streaming object into src object', remoteProducerId)
     document.getElementById(remoteProducerId).srcObject = new MediaStream([track])
-    // console.log(document.getElementById(remoteProducerId).srcObject, 'new element')
 
 
     // the server consumer started with media paused
